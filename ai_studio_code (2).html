@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HabboCifra - Xilofone Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --habbo-blue-dark: #184c5c;
+            --habbo-blue-mid: #2d8297;
+            --habbo-blue-light: #59aeb8;
+            --habbo-orange: #e69e33;
+            --habbo-grey: #cecece;
+            --habbo-white: #ffffff;
+            --pixel-font: 'Press Start 2P', cursive;
+        }
+
+        body {
+            background-color: #9ad2db;
+            background-image: 
+                linear-gradient(45deg, #8cc0c9 25%, transparent 25%, transparent 75%, #8cc0c9 75%, #8cc0c9),
+                linear-gradient(45deg, #8cc0c9 25%, transparent 25%, transparent 75%, #8cc0c9 75%, #8cc0c9);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            font-family: var(--pixel-font);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #000;
+        }
+
+        .container {
+            background-color: var(--habbo-grey);
+            border: 4px solid var(--habbo-white);
+            outline: 4px solid var(--habbo-blue-dark);
+            padding: 15px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .header {
+            background-color: var(--habbo-blue-mid);
+            color: var(--habbo-white);
+            padding: 10px;
+            text-align: center;
+            border: 2px solid var(--habbo-blue-dark);
+            border-top-color: var(--habbo-blue-light);
+            border-left-color: var(--habbo-blue-light);
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        h1 { font-size: 14px; margin: 0; line-height: 1.5; }
+
+        .panel {
+            background-color: #fff;
+            border: 2px solid #888;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+            padding: 10px;
+            margin-bottom: 15px;
+            box-shadow: inset 2px 2px 0px #888;
+        }
+
+        label {
+            font-size: 10px;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--habbo-blue-dark);
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            font-family: var(--pixel-font);
+            font-size: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 2px solid #000;
+            background-color: #f0f0f0;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .options-bar {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            font-size: 9px;
+            cursor: pointer;
+        }
+        .checkbox-wrapper input { margin-right: 5px; cursor: pointer; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button {
+            font-family: var(--pixel-font);
+            font-size: 10px;
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: var(--habbo-orange);
+            color: #fff;
+            border: 2px solid #8a5d1d;
+            border-top-color: #ffcc80;
+            border-left-color: #ffcc80;
+            text-shadow: 1px 1px 0 #000;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: translate(2px, 2px);
+            border-top-color: #8a5d1d;
+            border-left-color: #8a5d1d;
+        }
+
+        button.play-btn { background-color: #57bb68; border-color: #2d6336; border-top-color: #8cefa0; border-left-color: #8cefa0; }
+        button.stop-btn { background-color: #d94343; border-color: #751b1b; border-top-color: #ff8787; border-left-color: #ff8787; }
+
+        .output-display {
+            background-color: #000;
+            color: #0f0;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 4px solid #555;
+            min-height: 80px;
+            white-space: pre; /* Mantém a formatação das linhas */
+            overflow-x: auto;
+        }
+
+        .legend {
+            font-size: 8px;
+            margin-top: 5px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .saved-list {
+            margin-top: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+
+        .saved-item {
+            background: #e0e0e0;
+            padding: 5px;
+            margin-bottom: 5px;
+            font-size: 9px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #fff;
+            box-shadow: 1px 1px 0 #888;
+        }
+        
+        .saved-item span { cursor: pointer; color: #000; }
+        .saved-item span:hover { color: #0000aa; text-decoration: underline; }
+        .saved-item button { padding: 2px 5px; font-size: 8px; background-color: #d94343; }
+        
+        .keyboard-hint {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+            font-size: 8px;
+            text-align: center;
+            background: #eee;
+            padding: 5px;
+            border: 1px dotted #888;
+        }
+        .row-hint { padding: 3px; }
+        .black-keys { color: #666; letter-spacing: 2px; }
+        .white-keys { color: #000; font-weight: bold; letter-spacing: 3px; }
+        
+        .group-box { border: 1px solid #999; margin-bottom: 5px; padding: 5px; background: #f9f9f9; }
+        .group-title { font-size: 8px; color: var(--habbo-blue-dark); margin-bottom: 2px; font-weight: bold; text-transform: uppercase;}
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>HABBO XILOFONE<br>Tradutor v2.0</h1>
+        </div>
+
+        <div class="panel">
+            <label for="inputNotes">Cole a música completa (Letra + Cifra):</label>
+            <textarea id="inputNotes" rows="6" placeholder="Ex:
+Parabéns pra você
+do do re do fa mi
+Nesta data querida
+do do re do sol fa"></textarea>
+            
+            <div class="options-bar">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="ignoreText" checked>
+                    Ignorar linhas sem notas (Letras)
+                </label>
+            </div>
+
+            <div class="legend">
+                <span>Minúsculas = Graves | Maiúsculas = Agudas | # = Sustenidos</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button onclick="translateCipher()">TRADUZIR</button>
+            <button class="play-btn" onclick="playMusic()">TOCAR</button>
+            <button class="stop-btn" onclick="stopMusic()">PARAR</button>
+        </div>
+
+        <div class="keyboard-hint">
+            <div class="group-box">
+                <div class="group-title">Graves (Oitava 4)</div>
+                <div class="row-hint black-keys">Sustenidos: 2 3  5 6 7</div>
+                <div class="row-hint white-keys">Naturais: Q W E R T Y U</div>
+            </div>
+            <div class="group-box">
+                <div class="group-title">Agudas (Oitava 5)</div>
+                <div class="row-hint black-keys">Sustenidos: S D  G H J</div>
+                <div class="row-hint white-keys">Naturais: Z X C V B N M</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <label>Resultado (Teclas):</label>
+            <div id="output" class="output-display">...</div>
+        </div>
+
+        <div class="panel" style="background-color: #dcdcdc;">
+            <label>Gravar Música:</label>
+            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                <input type="text" id="songTitle" placeholder="Título da música">
+                <button onclick="saveSong()">GRAVAR</button>
+            </div>
+            <div class="saved-list" id="savedList"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- MAPEAMENTO DE NOTAS ---
+        const notesMap = {
+            // === OITAVA 4 (GRAVES) ===
+            'c':   { key: 'Q', freq: 261.63 }, 'do':  { key: 'Q', freq: 261.63 },
+            'd':   { key: 'W', freq: 293.66 }, 're':  { key: 'W', freq: 293.66 },
+            'e':   { key: 'E', freq: 329.63 }, 'mi':  { key: 'E', freq: 329.63 },
+            'f':   { key: 'R', freq: 349.23 }, 'fa':  { key: 'R', freq: 349.23 },
+            'g':   { key: 'T', freq: 392.00 }, 'sol': { key: 'T', freq: 392.00 },
+            'a':   { key: 'Y', freq: 440.00 }, 'la':  { key: 'Y', freq: 440.00 },
+            'b':   { key: 'U', freq: 493.88 }, 'si':  { key: 'U', freq: 493.88 },
+            
+            // Sustenidos (Linha de números)
+            'c#':  { key: '2', freq: 277.18 }, 'do#': { key: '2', freq: 277.18 },
+            'd#':  { key: '3', freq: 311.13 }, 're#': { key: '3', freq: 311.13 },
+            'f#':  { key: '5', freq: 369.99 }, 'fa#': { key: '5', freq: 369.99 },
+            'g#':  { key: '6', freq: 415.30 }, 'sol#':{ key: '6', freq: 415.30 },
+            'a#':  { key: '7', freq: 466.16 }, 'la#': { key: '7', freq: 466.16 },
+            
+            // Enarmonia
+            'db':  { key: '2', freq: 277.18 }, 'reb': { key: '2', freq: 277.18 },
+            'eb':  { key: '3', freq: 311.13 }, 'mib': { key: '3', freq: 311.13 },
+            'gb':  { key: '5', freq: 369.99 }, 'solb':{ key: '5', freq: 369.99 },
+            'ab':  { key: '6', freq: 415.30 }, 'lab': { key: '6', freq: 415.30 },
+            'bb':  { key: '7', freq: 466.16 }, 'sib': { key: '7', freq: 466.16 },
+
+            // === OITAVA 5 (AGUDAS) ===
+            'C':   { key: 'Z', freq: 523.25 }, 'DO':  { key: 'Z', freq: 523.25 },
+            'D':   { key: 'X', freq: 587.33 }, 'RE':  { key: 'X', freq: 587.33 },
+            'E':   { key: 'C', freq: 659.25 }, 'MI':  { key: 'C', freq: 659.25 },
+            'F':   { key: 'V', freq: 698.46 }, 'FA':  { key: 'V', freq: 698.46 },
+            'G':   { key: 'B', freq: 783.99 }, 'SOL': { key: 'B', freq: 783.99 },
+            'A':   { key: 'N', freq: 880.00 }, 'LA':  { key: 'N', freq: 880.00 },
+            'B':   { key: 'M', freq: 987.77 }, 'SI':  { key: 'M', freq: 987.77 },
+
+            // Sustenidos (Linha ASDF)
+            'C#':  { key: 'S', freq: 554.37 }, 'DO#': { key: 'S', freq: 554.37 },
+            'D#':  { key: 'D', freq: 622.25 }, 'RE#': { key: 'D', freq: 622.25 },
+            'F#':  { key: 'G', freq: 739.99 }, 'FA#': { key: 'G', freq: 739.99 },
+            'G#':  { key: 'H', freq: 830.61 }, 'SOL#':{ key: 'H', freq: 830.61 },
+            'A#':  { key: 'J', freq: 932.33 }, 'LA#': { key: 'J', freq: 932.33 },
+            // Enarmonia
+            'DB':  { key: 'S', freq: 554.37 }, 'REB': { key: 'S', freq: 554.37 },
+            'EB':  { key: 'D', freq: 622.25 }, 'MIB': { key: 'D', freq: 622.25 },
+            'GB':  { key: 'G', freq: 739.99 }, 'SOLB':{ key: 'G', freq: 739.99 },
+            'AB':  { key: 'H', freq: 830.61 }, 'LAB': { key: 'H', freq: 830.61 },
+            'BB':  { key: 'J', freq: 932.33 }, 'SIB': { key: 'J', freq: 932.33 },
+        };
+
+        let audioCtx;
+        let isPlaying = false;
+        let timeouts = [];
+
+        document.addEventListener('DOMContentLoaded', loadSavedSongs);
+
+        function translateCipher() {
+            const input = document.getElementById('inputNotes').value;
+            const result = parseAndConvert(input);
+            
+            // Atualiza o texto na tela mantendo as quebras de linha
+            document.getElementById('output').innerText = result.text;
+            
+            return result.sequence; // Para o player
+        }
+
+        function parseAndConvert(input) {
+            const ignoreText = document.getElementById('ignoreText').checked;
+            // Divide por linhas para processar separadamente
+            const lines = input.split('\n');
+            
+            let finalText = "";
+            let fullSequence = [];
+
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                
+                // Se a linha estiver vazia, adiciona quebra e continua (se não estiver no fim)
+                if (!trimmedLine) {
+                    if(!ignoreText) finalText += "\n";
+                    return;
+                }
+
+                // Processa tokens desta linha
+                const tokens = trimmedLine.split(/[\s,-]+/);
+                let lineOutput = "";
+                let lineSequence = [];
+                let validNotesCount = 0;
+
+                tokens.forEach(token => {
+                    if (!token) return;
+                    
+                    let cleanToken = token.replace(/[^a-zA-Z0-9#]/g, '');
+                    if (!cleanToken) return;
+
+                    // Tenta achar nota
+                    let data = notesMap[cleanToken];
+                    if (!data) data = notesMap[cleanToken.toLowerCase()];
+
+                    if (data) {
+                        // É uma nota válida
+                        lineOutput += data.key + " ";
+                        lineSequence.push(data.freq);
+                        validNotesCount++;
+                    } else {
+                        // Não é nota
+                        lineOutput += "? ";
+                        lineSequence.push(0); // Pausa
+                    }
+                });
+
+                // LÓGICA DE FILTRO:
+                // Se estiver marcado "Ignorar Texto" e não achamos nenhuma nota válida nesta linha, ignoramos.
+                if (ignoreText && validNotesCount === 0) {
+                    return; 
+                }
+
+                // Se passou pelo filtro, adiciona ao resultado final
+                finalText += lineOutput.trim() + "\n";
+                
+                // Adiciona frequencias ao array global de áudio
+                fullSequence = fullSequence.concat(lineSequence);
+                
+                // Adiciona uma pequena pausa no fim da linha pro audio não ficar atropelado visualmente
+                // (Opcional, mas ajuda no ritmo)
+                if(lineSequence.length > 0) {
+                     // fullSequence.push(0); 
+                }
+            });
+
+            return { text: finalText.trimEnd(), sequence: fullSequence };
+        }
+
+        function playMusic() {
+            stopMusic();
+            
+            const sequenceData = translateCipher();
+            
+            if(sequenceData.length === 0) return;
+
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            isPlaying = true;
+            const tempo = 0.35; // Ritmo
+
+            let currentTime = audioCtx.currentTime + 0.1;
+
+            sequenceData.forEach((freq, index) => {
+                // Agendamento preciso usando AudioContext time
+                if (freq > 0) {
+                    let t = setTimeout(() => playXylophoneSound(freq), index * (tempo * 1000));
+                    timeouts.push(t);
+                }
+            });
+            
+            let endT = setTimeout(() => { isPlaying = false; }, sequenceData.length * (tempo * 1000) + 500);
+            timeouts.push(endT);
+        }
+
+        function playXylophoneSound(freq) {
+            if (!isPlaying) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine'; 
+            osc.frequency.value = freq;
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            // Envelope Percussivo
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.4, now + 0.01); 
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5); 
+
+            osc.start(now);
+            osc.stop(now + 0.6);
+        }
+
+        function stopMusic() {
+            isPlaying = false;
+            timeouts.forEach(t => clearTimeout(t));
+            timeouts = [];
+            if(audioCtx) {
+                audioCtx.suspend().then(() => audioCtx.resume());
+            }
+        }
+
+        function saveSong() {
+            const title = document.getElementById('songTitle').value.trim();
+            const notes = document.getElementById('inputNotes').value.trim();
+
+            if (!title || !notes) {
+                alert("Preencha título e notas.");
+                return;
+            }
+
+            let saved = JSON.parse(localStorage.getItem('habboSongs')) || [];
+            saved.push({ title: title, notes: notes });
+            localStorage.setItem('habboSongs', JSON.stringify(saved));
+            
+            document.getElementById('songTitle').value = '';
+            loadSavedSongs();
+        }
+
+        function loadSavedSongs() {
+            const list = document.getElementById('savedList');
+            list.innerHTML = '';
+            let saved = JSON.parse(localStorage.getItem('habboSongs')) || [];
+
+            if(saved.length === 0) {
+                list.innerHTML = '<div style="text-align:center; font-size:8px; color:#777;">Vazio</div>';
+                return;
+            }
+
+            saved.forEach((song, index) => {
+                const div = document.createElement('div');
+                div.className = 'saved-item';
+                
+                const span = document.createElement('span');
+                span.innerText = song.title;
+                span.onclick = () => {
+                    document.getElementById('inputNotes').value = song.notes;
+                    translateCipher();
+                };
+
+                const btn = document.createElement('button');
+                btn.innerText = 'X';
+                btn.onclick = () => deleteSong(index);
+
+                div.appendChild(span);
+                div.appendChild(btn);
+                list.appendChild(div);
+            });
+        }
+
+        function deleteSong(index) {
+            let saved = JSON.parse(localStorage.getItem('habboSongs')) || [];
+            saved.splice(index, 1);
+            localStorage.setItem('habboSongs', JSON.stringify(saved));
+            loadSavedSongs();
+        }
+    </script>
+</body>
+</html>

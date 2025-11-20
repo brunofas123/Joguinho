@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Corrida Luso-Brasileira</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #202028;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 80%, #e0e0e0 80%, #e0e0e0 100%);
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            image-rendering: pixelated;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 10;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #FFD700;
+            text-shadow: 2px 2px #003399;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        button {
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 20px;
+            margin: 10px;
+            background: #009c3b;
+            border: 4px solid #fff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: transform 0.1s;
+        }
+
+        button:hover {
+            transform: scale(1.1);
+            background: #ff0000; /* Vermelho Portugal */
+        }
+
+        .char-select {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .char-card {
+            border: 2px solid #555;
+            padding: 10px;
+            cursor: pointer;
+            width: 80px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .char-card:hover, .char-card.selected {
+            border-color: #FFD700;
+            background: #444;
+        }
+
+        .char-preview {
+            margin-bottom: 8px;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #000;
+            font-size: 14px;
+            z-index: 5;
+        }
+
+        #ranking-list {
+            list-style: none;
+            padding: 0;
+            font-size: 10px;
+            color: #ccc;
+            margin-top: 20px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        #ranking-list li {
+            margin: 5px 0;
+            border-bottom: 1px dashed #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="hud">Pontos: 0</div>
+
+    <!-- MENU INICIAL -->
+    <div id="menu" class="ui-layer">
+        <h1>CORRIDA<br>LUSO-BRASILEIRA</h1>
+        <p style="font-size: 10px; color: #aaa;">Selecione o Personagem:</p>
+        
+        <div class="char-select" id="charContainer"></div>
+
+        <button onclick="startGame()">JOGAR</button>
+
+        <div style="margin-top: 15px;">
+            <p style="color: #FFD700; font-size: 12px;">RANKING</p>
+            <ul id="ranking-list"></ul>
+        </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="gameOver" class="ui-layer hidden">
+        <h1 style="color: red;">FIM DE JOGO</h1>
+        <p id="finalScore">Pontuação: 0</p>
+        <input type="text" id="playerName" placeholder="Iniciais (3)" maxlength="3" style="font-family:inherit; padding:5px; text-transform:uppercase;">
+        <button onclick="saveScoreAndRestart()">SALVAR & MENU</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    let gameRunning = false;
+    let score = 0;
+    let gameSpeed = 5;
+    let frame = 0;
+    let obstacles = [];
+    let nextSpawnDistance = 0;
+
+    // --- DEFINIÇÃO DOS PERSONAGENS COM ANIMAÇÃO ---
+    // Cada personagem tem 'frames': run1, run2 (corrida) e jump (pulo)
+    // 0=vazio, 1=pele, 2=roupa, 3=preto(olho), 4=pele_escura, 5=metal/arma, 6=sapato
+    
+    const createFrames = (baseHead, baseBody, legType) => {
+        // Helper simples para evitar repetição massiva de código
+        // legType 0 = Gordo, 1 = Normal
+        let f1 = JSON.parse(JSON.stringify([...baseHead, ...baseBody]));
+        let f2 = JSON.parse(JSON.stringify([...baseHead, ...baseBody]));
+        let fj = JSON.parse(JSON.stringify([...baseHead, ...baseBody]));
+        
+        // Pernas Frame 1 (Abertas)
+        if(legType === 0) { // Gordo
+            f1.push([2,2,0,0,0,0,0,0,2,2]); 
+            f2.push([0,0,2,2,0,0,2,2,0,0]); // Fechadas
+            fj.push([0,2,2,0,0,0,0,2,2,0]); // Encolhidas
+        } else { // Normal
+            f1.push([0,2,2,0,0,0,0,2,2,0]); 
+            f2.push([0,0,0,2,2,2,2,0,0,0]); 
+            fj.push([0,0,2,2,0,0,2,2,0,0]); // Pulo
+        }
+        return { run1: f1, run2: f2, jump: fj };
+    };
+
+    // Base dos personagens (Cabeça + Torso)
+    const bernardoBase = [
+        [0,0,0,3,3,3,3,0,0,0], // Cabelo
+        [0,0,1,1,1,1,1,1,0,0],
+        [0,0,1,3,1,3,1,1,0,0], // Olhos
+        [0,1,1,1,1,1,1,1,1,0], // Pescoço
+        [0,2,2,2,2,2,2,2,2,0], // Barriga
+        [2,2,2,2,2,2,2,2,2,2],
+        [2,2,2,2,2,2,2,2,2,2],
+        [2,2,2,2,2,2,2,2,2,2]
+    ];
+
+    const rafaBase = [
+        [0,2,2,2,2,2,2,2,0], // Chapéu
+        [0,0,1,1,1,1,1,0,0],
+        [0,0,1,3,1,3,1,0,0], // Olhos
+        [0,0,2,2,2,2,2,5,5], // Arma
+        [0,0,2,2,2,2,2,0,0],
+        [0,0,2,2,2,2,2,0,0]
+    ];
+
+    const magicBase = [
+        [0,0,3,3,3,3,0,0], 
+        [0,0,4,4,4,4,0,0],
+        [0,0,4,3,4,3,0,0], // Olhos
+        [0,0,4,4,4,4,0,0], 
+        [0,0,2,2,2,2,0,0], // Regata Amarela
+        [0,0,2,2,2,2,0,0],
+        [0,0,2,2,2,2,0,0]
+    ];
+
+    const brunoBase = [
+        [0,2,2,2,2,2,2,0], // Chapéu
+        [0,0,1,1,1,1,0,0],
+        [0,0,1,3,1,3,0,0],
+        [0,2,3,2,3,2,0,0], // Xadrez
+        [0,2,2,2,2,2,0,0],
+        [0,3,3,3,3,3,0,0]  // Calça Jeans
+    ];
+
+    const artonBase = [
+        [0,0,0,3,3,3,0,0,0,0],
+        [0,0,0,1,1,1,0,0,0,0],
+        [0,0,0,1,3,1,3,0,0,0],
+        [5,5,2,2,2,2,2,5,5,0], // Armas
+        [0,0,2,2,2,2,2,0,0,0],
+        [0,0,2,2,2,2,2,0,0,0]
+    ];
+
+    const characters = [
+        { id: 'bernardo', name: 'Bernardo', colorSkin: '#f5cba7', colorCloth: '#3498db', frames: createFrames(bernardoBase, [], 0) },
+        { id: 'rafa', name: 'Rafa', colorSkin: '#f5cba7', colorCloth: '#2ecc71', frames: createFrames(rafaBase, [], 1) },
+        { id: 'magic', name: 'MAGIC', colorSkin: '#5D4037', colorCloth: '#FFEB3B', frames: createFrames(magicBase, [], 1) },
+        { id: 'bruno', name: 'Bruno', colorSkin: '#f5cba7', colorCloth: '#e67e22', frames: createFrames(brunoBase, [], 1) },
+        { id: 'arton', name: 'Arton', colorSkin: '#f5cba7', colorCloth: '#2c3e50', frames: createFrames(artonBase, [], 1) }
+    ];
+
+    let selectedChar = characters[0];
+
+    // --- CLASSE JOGADOR ---
+    class Player {
+        constructor() {
+            this.x = 50;
+            this.y = 300;
+            this.dy = 0;
+            this.jumpForce = 14;
+            this.gravity = 0.7;
+            this.grounded = true;
+            this.width = 40;
+            this.height = 40;
+            this.pixelSize = 4;
+        }
+
+        jump() {
+            if (this.grounded) {
+                this.dy = -this.jumpForce;
+                this.grounded = false;
+            }
+        }
+
+        update() {
+            this.y += this.dy;
+            if (this.y < 300) {
+                this.dy += this.gravity;
+                this.grounded = false;
+            } else {
+                this.y = 300;
+                this.dy = 0;
+                this.grounded = true;
+            }
+        }
+
+        draw() {
+            // Lógica de Animação
+            let mapToDraw;
+            if (!this.grounded) {
+                mapToDraw = selectedChar.frames.jump;
+            } else {
+                // Alterna a cada 8 frames
+                mapToDraw = (Math.floor(frame / 8) % 2 === 0) ? selectedChar.frames.run1 : selectedChar.frames.run2;
+            }
+            drawPixelCharacter(ctx, mapToDraw, selectedChar, this.x, this.y, this.pixelSize);
+        }
+    }
+
+    // --- OBSTÁCULOS TEMÁTICOS ---
+    class Obstacle {
+        constructor() {
+            this.x = canvas.width;
+            this.y = 305;
+            this.w = 30;
+            this.h = 40;
+            this.markedForDeletion = false;
+            
+            // Tipos: 
+            // BR: Cacto, Cobra
+            // PT: Galo, Elétrico
+            const types = ['cactus', 'snake', 'galo', 'tram'];
+            this.type = types[Math.floor(Math.random() * types.length)];
+
+            // Ajustes de hitbox baseados no tipo
+            if (this.type === 'snake') {
+                this.y = 325; // Mais baixo
+                this.h = 15;
+                this.w = 40;
+            } else if (this.type === 'tram') {
+                this.w = 50; // Mais largo
+                this.y = 300;
+            } else if (this.type === 'galo') {
+                this.y = 310;
+            }
+        }
+
+        update() {
+            this.x -= gameSpeed;
+            if (this.x + this.w < -50) this.markedForDeletion = true;
+        }
+
+        draw() {
+            if (this.type === 'cactus') {
+                // BRASIL: Cacto Mandacaru
+                ctx.fillStyle = '#2ecc71'; // Verde
+                ctx.fillRect(this.x + 10, this.y, 10, 35); // Tronco
+                ctx.fillRect(this.x, this.y + 10, 10, 5);  // Braço esq
+                ctx.fillRect(this.x, this.y + 5, 5, 10);   // Ponta esq
+                ctx.fillRect(this.x + 20, this.y + 15, 10, 5); // Braço dir
+                ctx.fillRect(this.x + 25, this.y + 10, 5, 10); // Ponta dir
+                // Espinhos (pixelados)
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x + 12, this.y + 20, 2, 2);
+
+            } else if (this.type === 'snake') {
+                // BRASIL: Cobra Jararaca
+                ctx.fillStyle = '#6B8E23'; // Verde Oliva
+                ctx.fillRect(this.x, this.y + 5, this.w, 10); // Corpo
+                ctx.fillStyle = '#FFFF00'; // Detalhes amarelos
+                ctx.fillRect(this.x + 10, this.y + 7, 4, 4);
+                ctx.fillRect(this.x + 25, this.y + 7, 4, 4);
+                // Língua
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(this.x - 5, this.y + 8, 5, 2);
+
+            } else if (this.type === 'galo') {
+                // PORTUGAL: Galo de Barcelos (Pixel Art Abstrata)
+                ctx.fillStyle = '#000'; // Corpo Preto
+                ctx.fillRect(this.x + 5, this.y + 10, 20, 20); // Corpo
+                ctx.fillRect(this.x + 10, this.y, 10, 10); // Pescoço/Cabeça
+                ctx.fillStyle = '#FF0000'; // Crista
+                ctx.fillRect(this.x + 12, this.y - 5, 8, 5);
+                // Decorações
+                ctx.fillStyle = '#FFD700'; // Coração/Bola amarela
+                ctx.fillRect(this.x + 10, this.y + 15, 4, 4);
+                ctx.fillStyle = '#3498db'; // Azul
+                ctx.fillRect(this.x + 18, this.y + 18, 4, 4);
+
+            } else if (this.type === 'tram') {
+                // PORTUGAL: Elétrico de Lisboa (Amarelo)
+                ctx.fillStyle = '#FFD700'; // Amarelo
+                ctx.fillRect(this.x, this.y, this.w, 35);
+                ctx.fillStyle = '#333'; // Janelas
+                ctx.fillRect(this.x + 5, this.y + 5, 10, 10);
+                ctx.fillRect(this.x + 20, this.y + 5, 10, 10);
+                ctx.fillRect(this.x + 35, this.y + 5, 10, 10);
+                ctx.fillStyle = '#000'; // Rodas
+                ctx.fillRect(this.x + 5, this.y + 35, 8, 5);
+                ctx.fillRect(this.x + 35, this.y + 35, 8, 5);
+                // Pantógrafo (Fio em cima)
+                ctx.fillRect(this.x + 20, this.y - 5, 2, 5);
+                ctx.fillRect(this.x + 10, this.y - 8, 22, 3);
+            }
+        }
+    }
+
+    function drawPixelCharacter(ctx, map, char, x, y, scale) {
+        for (let row = 0; row < map.length; row++) {
+            for (let col = 0; col < map[row].length; col++) {
+                const pixelType = map[row][col];
+                if (pixelType !== 0) {
+                    if (pixelType === 1) ctx.fillStyle = char.colorSkin;
+                    else if (pixelType === 2) ctx.fillStyle = char.colorCloth;
+                    else if (pixelType === 3) ctx.fillStyle = '#000'; // Olhos/Preto
+                    else if (pixelType === 4) ctx.fillStyle = char.colorSkin;
+                    else if (pixelType === 5) ctx.fillStyle = '#95a5a6'; // Metal
+                    
+                    ctx.fillRect(x + col * scale, y + row * scale, scale, scale);
+                }
+            }
+        }
+    }
+
+    function drawBackground() {
+        // Chão
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fillRect(0, 340, canvas.width, 60);
+        
+        // Padrão de chão em movimento (Calçada Portuguesa)
+        ctx.fillStyle = '#333';
+        let patternOffset = (frame * gameSpeed) % 40;
+        for(let i = -40; i < canvas.width; i+=40) {
+            ctx.fillRect(i - patternOffset, 350, 8, 8);
+            ctx.fillRect((i+20) - patternOffset, 365, 8, 8);
+        }
+
+        // Linha decorativa (Verde Brasil)
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(0, 335, canvas.width, 5);
+    }
+
+    let player = new Player();
+
+    function spawnObstacle() {
+        let lastObs = obstacles[obstacles.length - 1];
+        let lastX = lastObs ? lastObs.x : -999;
+
+        // Gera novo obstáculo se tiver espaço suficiente
+        if (!lastObs || (canvas.width - lastX > nextSpawnDistance)) {
+            obstacles.push(new Obstacle());
+            
+            // Distância aleatória (mínimo 350px + aleatório)
+            // Diminui ligeiramente o gap máximo conforme o jogo acelera para manter o fluxo
+            let speedFactor = Math.min(100, score / 10); 
+            nextSpawnDistance = 350 + Math.random() * (500 - speedFactor);
+        }
+    }
+
+    function checkCollisions() {
+        // Hitbox do Jogador (ajustada para ser menos punitiva)
+        let pBox = { 
+            x: player.x + 12, 
+            y: player.y + 5, 
+            w: player.width - 20, 
+            h: player.height - 10 
+        };
+
+        for (let obs of obstacles) {
+            // Hitbox do Obstáculo
+            let oBox = { 
+                x: obs.x + 5, 
+                y: obs.y + 5, 
+                w: obs.w - 10, 
+                h: obs.h - 5 
+            };
+
+            if (pBox.x < oBox.x + oBox.w && pBox.x + pBox.w > oBox.x &&
+                pBox.y < oBox.y + oBox.h && pBox.y + pBox.h > oBox.y) {
+                gameOver();
+            }
+        }
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+
+        player.update();
+        player.draw();
+
+        spawnObstacle();
+        
+        obstacles.forEach(obs => {
+            obs.update();
+            obs.draw();
+        });
+        obstacles = obstacles.filter(o => !o.markedForDeletion);
+
+        checkCollisions();
+
+        // Aumenta pontuação e velocidade
+        score++;
+        // Velocidade aumenta progressivamente
+        gameSpeed += 0.002; 
+
+        document.getElementById('hud').innerText = `Pontos: ${Math.floor(score / 10)} | Vel: ${gameSpeed.toFixed(1)}`;
+        
+        frame++;
+        requestAnimationFrame(gameLoop);
+    }
+
+    // --- UI E MENU ---
+    function initMenu() {
+        const container = document.getElementById('charContainer');
+        container.innerHTML = '';
+        
+        characters.forEach((char, index) => {
+            let div = document.createElement('div');
+            div.className = 'char-card' + (index === 0 ? ' selected' : '');
+            div.onclick = () => selectChar(index);
+            
+            let c = document.createElement('canvas');
+            c.width = 50; c.height = 50;
+            c.className = 'char-preview';
+            let cx = c.getContext('2d');
+            // Desenha o frame "Run1" no menu
+            drawPixelCharacter(cx, char.frames.run1, char, 5, 5, 4);
+            
+            let name = document.createElement('div');
+            name.innerText = char.name;
+            name.style.fontSize = '8px';
+            name.style.marginTop = '5px';
+
+            div.appendChild(c);
+            div.appendChild(name);
+            container.appendChild(div);
+        });
+        updateRankingList();
+    }
+
+    function selectChar(index) {
+        selectedChar = characters[index];
+        document.querySelectorAll('.char-card').forEach(el => el.classList.remove('selected'));
+        document.querySelectorAll('.char-card')[index].classList.add('selected');
+    }
+
+    function startGame() {
+        document.getElementById('menu').classList.add('hidden');
+        document.getElementById('gameOver').classList.add('hidden');
+        player = new Player();
+        obstacles = [];
+        score = 0;
+        gameSpeed = 6; // Velocidade inicial
+        frame = 0;
+        nextSpawnDistance = 400;
+        gameRunning = true;
+        requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        document.getElementById('gameOver').classList.remove('hidden');
+        document.getElementById('finalScore').innerText = `Pontuação: ${Math.floor(score / 10)}`;
+    }
+
+    function saveScoreAndRestart() {
+        let name = document.getElementById('playerName').value || "AAA";
+        let finalScore = Math.floor(score / 10);
+        let ranking = JSON.parse(localStorage.getItem('lusoRunnerRanking')) || [];
+        ranking.push({name: name, score: finalScore});
+        ranking.sort((a, b) => b.score - a.score);
+        ranking = ranking.slice(0, 5);
+        localStorage.setItem('lusoRunnerRanking', JSON.stringify(ranking));
+        
+        document.getElementById('gameOver').classList.add('hidden');
+        document.getElementById('menu').classList.remove('hidden');
+        updateRankingList();
+    }
+
+    function updateRankingList() {
+        let list = document.getElementById('ranking-list');
+        list.innerHTML = '';
+        let ranking = JSON.parse(localStorage.getItem('lusoRunnerRanking')) || [];
+        if(ranking.length === 0) list.innerHTML = '<li>Sem recordes ainda</li>';
+        ranking.forEach((r, i) => {
+            let li = document.createElement('li');
+            li.innerText = `${i+1}. ${r.name} - ${r.score}`;
+            list.appendChild(li);
+        });
+    }
+
+    // Controles
+    const jumpAction = (e) => {
+        if ((e.code === 'Space' || e.code === 'ArrowUp' || e.type === 'touchstart' || e.type === 'mousedown') && gameRunning) {
+            player.jump();
+            // Previne scroll no mobile/desktop
+            if(e.type !== 'mousedown') e.preventDefault(); 
+        }
+    };
+
+    window.addEventListener('keydown', jumpAction);
+    canvas.addEventListener('touchstart', jumpAction, {passive: false});
+    canvas.addEventListener('mousedown', jumpAction);
+
+    initMenu();
+
+</script>
+</body>
+</html>
